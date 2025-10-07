@@ -2,13 +2,29 @@ package co.com.bancolombia.api;
 
 import co.com.bancolombia.api.response.ErrorResponse;
 import co.com.bancolombia.api.response.FranchiseResponse;
+import co.com.bancolombia.api.response.BranchResponse;
+import co.com.bancolombia.api.response.ProductResponse;
+import co.com.bancolombia.usecase.franchise.dto.FranchiseWithBranchesResponse;
 import co.com.bancolombia.api.request.CreateFranchiseRequest;
 import co.com.bancolombia.api.request.UpdateFranchiseRequest;
+import co.com.bancolombia.api.request.CreateBranchRequest;
+import co.com.bancolombia.api.request.CreateProductRequest;
+import co.com.bancolombia.api.request.UpdateProductRequest;
+import co.com.bancolombia.api.request.UpdateBranchRequest;
 import co.com.bancolombia.model.franchise.exceptions.DomainException;
 import co.com.bancolombia.usecase.franchise.CreateFranchiseUseCase;
 import co.com.bancolombia.usecase.franchise.DeleteFranchiseUseCase;
 import co.com.bancolombia.usecase.franchise.FindAllFranchisesUseCase;
 import co.com.bancolombia.usecase.franchise.UpdateFranchiseUseCase;
+import co.com.bancolombia.usecase.branch.CreateBranchUseCase;
+import co.com.bancolombia.usecase.branch.FindBranchesByFranchiseUseCase;
+import co.com.bancolombia.usecase.branch.DeleteBranchUseCase;
+import co.com.bancolombia.usecase.branch.UpdateBranchUseCase;
+import co.com.bancolombia.usecase.product.CreateProductUseCase;
+import co.com.bancolombia.usecase.product.FindProductsByBranchUseCase;
+import co.com.bancolombia.usecase.product.UpdateProductUseCase;
+import co.com.bancolombia.usecase.product.DeleteProductUseCase;
+import co.com.bancolombia.usecase.franchise.GetFranchiseWithBranchesTopProductUseCase;
 import co.com.bancolombia.usecase.exception.BussinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -39,6 +55,15 @@ public class Handler {
   private final FindAllFranchisesUseCase findAllFranchisesUseCase;
   private final UpdateFranchiseUseCase updateFranchiseUseCase;
   private final DeleteFranchiseUseCase deleteFranchiseUseCase;
+  private final CreateBranchUseCase createBranchUseCase;
+  private final FindBranchesByFranchiseUseCase findBranchesByFranchiseUseCase;
+  private final DeleteBranchUseCase deleteBranchUseCase;
+  private final UpdateBranchUseCase updateBranchUseCase;
+  private final CreateProductUseCase createProductUseCase;
+  private final FindProductsByBranchUseCase findProductsByBranchUseCase;
+  private final UpdateProductUseCase updateProductUseCase;
+  private final DeleteProductUseCase deleteProductUseCase;
+  private final GetFranchiseWithBranchesTopProductUseCase getFranchiseWithBranchesTopProductUseCase;
   private final Validator validator;
 
 
@@ -51,7 +76,6 @@ public class Handler {
         }
       })
       .flatMap(req -> createFranchiseUseCase.execute(req.getName()))
-      .map(fr -> new FranchiseResponse(fr.getId().getValue(), fr.getName().getValue()))
       .flatMap(this::buildSuccessResponse)
       .onErrorResume(ConstraintViolationException.class, this::handleValidationException)
       .onErrorResume(DomainException.class, this::handleDomainException)
@@ -62,7 +86,6 @@ public class Handler {
 
   public Mono<ServerResponse> findAllFranchises(ServerRequest serverRequest) {
     return findAllFranchisesUseCase.execute()
-      .map(fr -> new FranchiseResponse(fr.getId().getValue(), fr.getName().getValue()))
       .collectList()
       .flatMap(this::buildSuccessResponse)
       .onErrorResume(DomainException.class, this::handleDomainException)
@@ -80,7 +103,6 @@ public class Handler {
         }
       })
       .flatMap(req -> updateFranchiseUseCase.execute(req.getId(), req.getName()))
-      .map(fr -> new FranchiseResponse(fr.getId().getValue(), fr.getName().getValue()))
       .flatMap(this::buildSuccessResponse)
       .onErrorResume(ConstraintViolationException.class, this::handleValidationException)
       .onErrorResume(co.com.bancolombia.model.franchise.exceptions.DomainException.class, this::handleDomainException)
@@ -94,6 +116,126 @@ public class Handler {
     return deleteFranchiseUseCase.execute(id)
       .flatMap(ignored -> ServerResponse.noContent().build())
       .onErrorResume(co.com.bancolombia.model.franchise.exceptions.DomainException.class, this::handleDomainException)
+      .onErrorResume(BussinessException.class, this::handleBusinessException)
+      .onErrorResume(Exception.class, this::handleGenericException)
+      .doOnError(error -> log.error(GENERIC_ERROR_MESSAGE, error));
+  }
+
+  public Mono<ServerResponse> createBranch(ServerRequest serverRequest) {
+    return serverRequest.bodyToMono(CreateBranchRequest.class)
+      .doOnNext(req -> {
+        Set<ConstraintViolation<CreateBranchRequest>> violations = validator.validate(req);
+        if (!violations.isEmpty()) {
+          throw new ConstraintViolationException(violations);
+        }
+      })
+      .flatMap(req -> createBranchUseCase.execute(req.getFranchiseId(), req.getName()))
+      .flatMap(this::buildSuccessResponse)
+      .onErrorResume(ConstraintViolationException.class, this::handleValidationException)
+      .onErrorResume(DomainException.class, this::handleDomainException)
+      .onErrorResume(BussinessException.class, this::handleBusinessException)
+      .onErrorResume(Exception.class, this::handleGenericException)
+      .doOnError(error -> log.error(GENERIC_ERROR_MESSAGE, error));
+  }
+
+  public Mono<ServerResponse> findBranchesByFranchise(ServerRequest serverRequest) {
+    Long franchiseId = Long.valueOf(serverRequest.pathVariable("franchiseId"));
+    return findBranchesByFranchiseUseCase.execute(franchiseId)
+      .collectList()
+      .flatMap(this::buildSuccessResponse)
+      .onErrorResume(DomainException.class, this::handleDomainException)
+      .onErrorResume(BussinessException.class, this::handleBusinessException)
+      .onErrorResume(Exception.class, this::handleGenericException)
+      .doOnError(error -> log.error(GENERIC_ERROR_MESSAGE, error));
+  }
+
+  public Mono<ServerResponse> deleteBranch(ServerRequest serverRequest) {
+    Long id = Long.valueOf(serverRequest.pathVariable("id"));
+    return deleteBranchUseCase.execute(id)
+      .flatMap(ignored -> ServerResponse.noContent().build())
+      .onErrorResume(DomainException.class, this::handleDomainException)
+      .onErrorResume(BussinessException.class, this::handleBusinessException)
+      .onErrorResume(Exception.class, this::handleGenericException)
+      .doOnError(error -> log.error(GENERIC_ERROR_MESSAGE, error));
+  }
+
+  public Mono<ServerResponse> updateBranch(ServerRequest serverRequest) {
+    return serverRequest.bodyToMono(UpdateBranchRequest.class)
+      .doOnNext(req -> {
+        Set<ConstraintViolation<UpdateBranchRequest>> violations = validator.validate(req);
+        if (!violations.isEmpty()) {
+          throw new ConstraintViolationException(violations);
+        }
+      })
+      .flatMap(req -> updateBranchUseCase.execute(req.getId(), req.getName()))
+      .flatMap(this::buildSuccessResponse)
+      .onErrorResume(ConstraintViolationException.class, this::handleValidationException)
+      .onErrorResume(DomainException.class, this::handleDomainException)
+      .onErrorResume(BussinessException.class, this::handleBusinessException)
+      .onErrorResume(Exception.class, this::handleGenericException)
+      .doOnError(error -> log.error(GENERIC_ERROR_MESSAGE, error));
+  }
+
+  public Mono<ServerResponse> createProduct(ServerRequest serverRequest) {
+    return serverRequest.bodyToMono(CreateProductRequest.class)
+      .doOnNext(req -> {
+        Set<ConstraintViolation<CreateProductRequest>> violations = validator.validate(req);
+        if (!violations.isEmpty()) {
+          throw new ConstraintViolationException(violations);
+        }
+      })
+      .flatMap(req -> createProductUseCase.execute(req.getBranchId(), req.getName(), req.getStock()))
+      .flatMap(this::buildSuccessResponse)
+      .onErrorResume(ConstraintViolationException.class, this::handleValidationException)
+      .onErrorResume(DomainException.class, this::handleDomainException)
+      .onErrorResume(BussinessException.class, this::handleBusinessException)
+      .onErrorResume(Exception.class, this::handleGenericException)
+      .doOnError(error -> log.error(GENERIC_ERROR_MESSAGE, error));
+  }
+
+  public Mono<ServerResponse> findProductsByBranch(ServerRequest serverRequest) {
+    Long branchId = Long.valueOf(serverRequest.pathVariable("branchId"));
+    return findProductsByBranchUseCase.execute(branchId)
+      .collectList()
+      .flatMap(this::buildSuccessResponse)
+      .onErrorResume(DomainException.class, this::handleDomainException)
+      .onErrorResume(BussinessException.class, this::handleBusinessException)
+      .onErrorResume(Exception.class, this::handleGenericException)
+      .doOnError(error -> log.error(GENERIC_ERROR_MESSAGE, error));
+  }
+
+  public Mono<ServerResponse> updateProduct(ServerRequest serverRequest) {
+    return serverRequest.bodyToMono(UpdateProductRequest.class)
+      .doOnNext(req -> {
+        Set<ConstraintViolation<UpdateProductRequest>> violations = validator.validate(req);
+        if (!violations.isEmpty()) {
+          throw new ConstraintViolationException(violations);
+        }
+      })
+      .flatMap(req -> updateProductUseCase.execute(req.getId(), req.getName(), req.getStock()))
+      .flatMap(this::buildSuccessResponse)
+      .onErrorResume(ConstraintViolationException.class, this::handleValidationException)
+      .onErrorResume(DomainException.class, this::handleDomainException)
+      .onErrorResume(BussinessException.class, this::handleBusinessException)
+      .onErrorResume(Exception.class, this::handleGenericException)
+      .doOnError(error -> log.error(GENERIC_ERROR_MESSAGE, error));
+  }
+
+  public Mono<ServerResponse> deleteProduct(ServerRequest serverRequest) {
+    Long id = Long.valueOf(serverRequest.pathVariable("id"));
+    return deleteProductUseCase.execute(id)
+      .flatMap(ignored -> ServerResponse.noContent().build())
+      .onErrorResume(DomainException.class, this::handleDomainException)
+      .onErrorResume(BussinessException.class, this::handleBusinessException)
+      .onErrorResume(Exception.class, this::handleGenericException)
+      .doOnError(error -> log.error(GENERIC_ERROR_MESSAGE, error));
+  }
+
+  public Mono<ServerResponse> getFranchiseWithBranchesTopProduct(ServerRequest serverRequest) {
+    Long id = Long.valueOf(serverRequest.pathVariable("id"));
+    return getFranchiseWithBranchesTopProductUseCase.execute(id)
+      .flatMap(this::buildSuccessResponse)
+      .onErrorResume(DomainException.class, this::handleDomainException)
       .onErrorResume(BussinessException.class, this::handleBusinessException)
       .onErrorResume(Exception.class, this::handleGenericException)
       .doOnError(error -> log.error(GENERIC_ERROR_MESSAGE, error));
