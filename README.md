@@ -11,7 +11,7 @@ Este proyecto sigue el plugin de Clean Architecture para Gradle y utiliza Java 2
 ## Clonar el repositorio
 
 ```bash
-git clone [<URL_REPO>](https://github.com/JacoboGarcesOP/nequi-challenge.git)
+git clone https://github.com/JacoboGarcesOP/nequi-challenge.git
 cd nequi-challenge
 ```
 
