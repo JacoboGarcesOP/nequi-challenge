@@ -69,6 +69,7 @@ public class Handler {
 
   public Mono<ServerResponse> createFranchise(ServerRequest serverRequest) {
     return serverRequest.bodyToMono(CreateFranchiseRequest.class)
+      .doOnSubscribe(s -> log.info("Request received: createFranchise"))
       .doOnNext(req -> {
         Set<ConstraintViolation<CreateFranchiseRequest>> violations = validator.validate(req);
         if (!violations.isEmpty()) {
@@ -86,6 +87,7 @@ public class Handler {
 
   public Mono<ServerResponse> findAllFranchises(ServerRequest serverRequest) {
     return findAllFranchisesUseCase.execute()
+      .doOnSubscribe(s -> log.info("Request received: findAllFranchises"))
       .collectList()
       .flatMap(this::buildSuccessResponse)
       .onErrorResume(DomainException.class, this::handleDomainException)
@@ -96,6 +98,7 @@ public class Handler {
 
   public Mono<ServerResponse> updateFranchise(ServerRequest serverRequest) {
     return serverRequest.bodyToMono(UpdateFranchiseRequest.class)
+      .doOnSubscribe(s -> log.info("Request received: updateFranchise"))
       .doOnNext(req -> {
         Set<ConstraintViolation<UpdateFranchiseRequest>> violations = validator.validate(req);
         if (!violations.isEmpty()) {
@@ -114,6 +117,7 @@ public class Handler {
   public Mono<ServerResponse> deleteFranchise(ServerRequest serverRequest) {
     Long id = Long.valueOf(serverRequest.pathVariable("id"));
     return deleteFranchiseUseCase.execute(id)
+      .doOnSubscribe(s -> log.info("Request received: deleteFranchise id={}", id))
       .flatMap(ignored -> ServerResponse.noContent().build())
       .onErrorResume(co.com.bancolombia.model.franchise.exceptions.DomainException.class, this::handleDomainException)
       .onErrorResume(BussinessException.class, this::handleBusinessException)
@@ -123,6 +127,7 @@ public class Handler {
 
   public Mono<ServerResponse> createBranch(ServerRequest serverRequest) {
     return serverRequest.bodyToMono(CreateBranchRequest.class)
+      .doOnSubscribe(s -> log.info("Request received: createBranch"))
       .doOnNext(req -> {
         Set<ConstraintViolation<CreateBranchRequest>> violations = validator.validate(req);
         if (!violations.isEmpty()) {
@@ -141,6 +146,7 @@ public class Handler {
   public Mono<ServerResponse> findBranchesByFranchise(ServerRequest serverRequest) {
     Long franchiseId = Long.valueOf(serverRequest.pathVariable("franchiseId"));
     return findBranchesByFranchiseUseCase.execute(franchiseId)
+      .doOnSubscribe(s -> log.info("Request received: findBranchesByFranchise franchiseId={}", franchiseId))
       .collectList()
       .flatMap(this::buildSuccessResponse)
       .onErrorResume(DomainException.class, this::handleDomainException)
@@ -152,6 +158,7 @@ public class Handler {
   public Mono<ServerResponse> deleteBranch(ServerRequest serverRequest) {
     Long id = Long.valueOf(serverRequest.pathVariable("id"));
     return deleteBranchUseCase.execute(id)
+      .doOnSubscribe(s -> log.info("Request received: deleteBranch id={}", id))
       .flatMap(ignored -> ServerResponse.noContent().build())
       .onErrorResume(DomainException.class, this::handleDomainException)
       .onErrorResume(BussinessException.class, this::handleBusinessException)
@@ -161,6 +168,7 @@ public class Handler {
 
   public Mono<ServerResponse> updateBranch(ServerRequest serverRequest) {
     return serverRequest.bodyToMono(UpdateBranchRequest.class)
+      .doOnSubscribe(s -> log.info("Request received: updateBranch"))
       .doOnNext(req -> {
         Set<ConstraintViolation<UpdateBranchRequest>> violations = validator.validate(req);
         if (!violations.isEmpty()) {
@@ -178,6 +186,7 @@ public class Handler {
 
   public Mono<ServerResponse> createProduct(ServerRequest serverRequest) {
     return serverRequest.bodyToMono(CreateProductRequest.class)
+      .doOnSubscribe(s -> log.info("Request received: createProduct"))
       .doOnNext(req -> {
         Set<ConstraintViolation<CreateProductRequest>> violations = validator.validate(req);
         if (!violations.isEmpty()) {
@@ -196,6 +205,7 @@ public class Handler {
   public Mono<ServerResponse> findProductsByBranch(ServerRequest serverRequest) {
     Long branchId = Long.valueOf(serverRequest.pathVariable("branchId"));
     return findProductsByBranchUseCase.execute(branchId)
+      .doOnSubscribe(s -> log.info("Request received: findProductsByBranch branchId={}", branchId))
       .collectList()
       .flatMap(this::buildSuccessResponse)
       .onErrorResume(DomainException.class, this::handleDomainException)
@@ -206,6 +216,7 @@ public class Handler {
 
   public Mono<ServerResponse> updateProduct(ServerRequest serverRequest) {
     return serverRequest.bodyToMono(UpdateProductRequest.class)
+      .doOnSubscribe(s -> log.info("Request received: updateProduct"))
       .doOnNext(req -> {
         Set<ConstraintViolation<UpdateProductRequest>> violations = validator.validate(req);
         if (!violations.isEmpty()) {
@@ -224,6 +235,7 @@ public class Handler {
   public Mono<ServerResponse> deleteProduct(ServerRequest serverRequest) {
     Long id = Long.valueOf(serverRequest.pathVariable("id"));
     return deleteProductUseCase.execute(id)
+      .doOnSubscribe(s -> log.info("Request received: deleteProduct id={}", id))
       .flatMap(ignored -> ServerResponse.noContent().build())
       .onErrorResume(DomainException.class, this::handleDomainException)
       .onErrorResume(BussinessException.class, this::handleBusinessException)
@@ -234,6 +246,7 @@ public class Handler {
   public Mono<ServerResponse> getFranchiseWithBranchesTopProduct(ServerRequest serverRequest) {
     Long id = Long.valueOf(serverRequest.pathVariable("id"));
     return getFranchiseWithBranchesTopProductUseCase.execute(id)
+      .doOnSubscribe(s -> log.info("Request received: getFranchiseWithBranchesTopProduct id={}", id))
       .flatMap(this::buildSuccessResponse)
       .onErrorResume(DomainException.class, this::handleDomainException)
       .onErrorResume(BussinessException.class, this::handleBusinessException)
