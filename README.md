@@ -1,47 +1,138 @@
 # Proyecto Base Implementando Clean Architecture
 
-## Antes de Iniciar
+Este proyecto sigue el plugin de Clean Architecture para Gradle y utiliza Java 21, Spring Boot 3 (reactivo), R2DBC con PostgreSQL y SLF4J para logs.
 
-Empezaremos por explicar los diferentes componentes del proyectos y partiremos de los componentes externos, continuando con los componentes core de negocio (dominio) y por último el inicio y configuración de la aplicación.
+## Requisitos
 
-Lee el artículo [Clean Architecture — Aislando los detalles](https://medium.com/bancolombia-tech/clean-architecture-aislando-los-detalles-4f9530f35d7a)
+- Java 21 (JDK)
+- Gradle Wrapper (incluido: `./gradlew` / `gradlew.bat`)
+- Docker y Docker Compose (opcional, para ejecución en contenedor)
 
-# Arquitectura
+## Clonar el repositorio
 
-![Clean Architecture](https://miro.medium.com/max/1400/1*ZdlHz8B0-qu9Y-QO3AXR_w.png)
+```bash
+git clone <URL_REPO>
+cd nequi-challenge
+```
 
-## Domain
+Reemplaza `<URL_REPO>` por la URL de tu fork o del repositorio oficial.
 
-Es el módulo más interno de la arquitectura, pertenece a la capa del dominio y encapsula la lógica y reglas del negocio mediante modelos y entidades del dominio.
+## Variables de entorno necesarias
 
-## Usecases
+La aplicación se configura vía variables de entorno (ver `applications/app-service/src/main/resources/application.yaml`).
 
-Este módulo gradle perteneciente a la capa del dominio, implementa los casos de uso del sistema, define lógica de aplicación y reacciona a las invocaciones desde el módulo de entry points, orquestando los flujos hacia el módulo de entities.
+- `SERVER_PORT`: puerto HTTP del servicio (ej. `8080`).
+- `DATABASE_HOST`: host de PostgreSQL (ej. `localhost`).
+- `DATABASE_NAME`: base de datos (ej. `nequi`).
+- `DATABASE_SCHEMA`: esquema (ej. `public`).
+- `DATABASE_USER`: usuario DB.
+- `DATABASE_PASSWORD`: contraseña DB.
+- `ALLOWED_ORIGINS`: orígenes CORS permitidos (ej. `*` o lista separada por comas).
+- `ALLOWED_METHODS`: métodos HTTP permitidos (ej. `GET,POST,PUT,DELETE`).
+- `BASE_URL`: prefijo base de la API (ej. `/v1/api`).
 
-## Infrastructure
+Ejemplo de `.env` local:
 
-### Helpers
+```bash
+SERVER_PORT=8080
+DATABASE_HOST=localhost
+DATABASE_NAME=nequi
+DATABASE_SCHEMA=public
+DATABASE_USER=postgres
+DATABASE_PASSWORD=postgres
+ALLOWED_ORIGINS=*
+ALLOWED_METHODS=GET,POST,PUT,DELETE
+BASE_URL=/v1/api
+```
 
-En el apartado de helpers tendremos utilidades generales para los Driven Adapters y Entry Points.
+## Ejecutar local con Gradle
 
-Estas utilidades no están arraigadas a objetos concretos, se realiza el uso de generics para modelar comportamientos
-genéricos de los diferentes objetos de persistencia que puedan existir, este tipo de implementaciones se realizan
-basadas en el patrón de diseño [Unit of Work y Repository](https://medium.com/@krzychukosobudzki/repository-design-pattern-bc490b256006)
+1) Exporta variables (o crea un `.env` y cárgalo):
 
-Estas clases no puede existir solas y debe heredarse su compartimiento en los **Driven Adapters**
+```bash
+export $(grep -v '^#' .env | xargs)   # macOS/Linux
+# En Windows PowerShell: setx SERVER_PORT 8080  (repite para cada variable)
+```
 
-### Driven Adapters
+2) Levanta el servicio:
 
-Los driven adapter representan implementaciones externas a nuestro sistema, como lo son conexiones a servicios rest,
-soap, bases de datos, lectura de archivos planos, y en concreto cualquier origen y fuente de datos con la que debamos
-interactuar.
+```bash
+./gradlew :applications:app-service:bootRun          # macOS/Linux
+gradlew.bat :applications:app-service:bootRun        # Windows
+```
 
-### Entry Points
+El servicio quedará expuesto en `http://localhost:${SERVER_PORT}`.
 
-Los entry points representan los puntos de entrada de la aplicación o el inicio de los flujos de negocio.
+## Ejecutar con Docker
 
-## Application
+Construye la imagen y ejecuta el contenedor (el `Dockerfile` ya realiza el build del módulo `app-service`):
 
-Este módulo es el más externo de la arquitectura, es el encargado de ensamblar los distintos módulos, resolver las dependencias y crear los beans de los casos de use (UseCases) de forma automática, inyectando en éstos instancias concretas de las dependencias declaradas. Además inicia la aplicación (es el único módulo del proyecto donde encontraremos la función “public static void main(String[] args)”.
+```bash
+docker build -t nequi-challenge .
+docker run --rm -p 8080:8080 \
+  -e SERVER_PORT=8080 \
+  -e DATABASE_HOST=host.docker.internal \
+  -e DATABASE_NAME=nequi \
+  -e DATABASE_SCHEMA=public \
+  -e DATABASE_USER=postgres \
+  -e DATABASE_PASSWORD=postgres \
+  -e ALLOWED_ORIGINS=* \
+  -e ALLOWED_METHODS=GET,POST,PUT,DELETE \
+  -e BASE_URL=/v1/api \
+  nequi-challenge
+```
 
-**Los beans de los casos de uso se disponibilizan automaticamente gracias a un '@ComponentScan' ubicado en esta capa.**
+Ajusta las variables según tu entorno y puertos. Nota: el `application.yaml` usa `sslMode=require` en la URL R2DBC; asegúrate de que tu base de datos permita conexión con SSL o ajusta el parámetro si tu entorno local no lo requiere.
+
+## Endpoints y documentación
+
+- Base de la API: `http://localhost:${SERVER_PORT}/v1/api`
+- Rutas gestionadas vía `RouterFunction` en `infrastructure/entry-points/reactive-web`.
+- OpenAPI/Swagger: revisa la configuración en `applications/app-service/src/main/java/co/com/bancolombia/config/OpenApiConfig.java`. Si tienes Swagger UI habilitado, suele estar en `/swagger-ui.html` o `/swagger-ui/index.html`.
+
+## Estructura del proyecto
+
+Monorepo multi-módulo (Gradle):
+
+- `domain/model`: entidades del dominio, value objects y gateways (interfaces).
+- `domain/usecase`: casos de uso; orquestan reglas de negocio y dependen de gateways.
+- `infrastructure/entry-points/reactive-web`: capa de entrada reactiva (handlers y router).
+- `infrastructure/driven-adapters/r2dbc-postgresql`: implementación R2DBC sobre PostgreSQL (repositories/adapters).
+- `applications/app-service`: módulo ejecutable (Spring Boot) que ensambla y arranca la app.
+
+### Flujo (alto nivel)
+
+1. Request HTTP entra por `reactive-web` (`RouterRest` -> `Handler`).
+2. `Handler` valida y delega en casos de uso (`usecase`).
+3. Casos de uso llaman a gateways definidos en `model`.
+4. Adapters R2DBC implementan los gateways contra PostgreSQL.
+5. `app-service` configura beans, OpenAPI y arranque.
+
+## Persistencia (R2DBC + PostgreSQL)
+
+- Repositorios reactivos en `infrastructure/driven-adapters/r2dbc-postgresql/src/main/java/.../repository`.
+- Adapters que transforman `Entity` <-> `Domain` en `.../adapter`.
+- La conexión se define en `application.yaml` usando variables de entorno descritas arriba.
+
+## Logs
+
+- SLF4J con Log4j2 (`applications/app-service/src/main/resources/log4j2.properties`).
+- Handlers y adapters incluyen logs de entrada y de error para trazabilidad.
+
+## Comandos útiles
+
+```bash
+# Ejecutar tests
+./gradlew test
+
+# Compilar JAR de la app
+./gradlew :applications:app-service:bootJar
+
+# Formato/estáticos (si aplica en tu entorno)
+./gradlew check
+```
+
+## Referencias
+
+- Lee el artículo [Clean Architecture — Aislando los detalles](https://medium.com/bancolombia-tech/clean-architecture-aislando-los-detalles-4f9530f35d7a)
+

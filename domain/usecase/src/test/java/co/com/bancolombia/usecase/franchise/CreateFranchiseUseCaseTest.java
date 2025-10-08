@@ -27,7 +27,7 @@ class CreateFranchiseUseCaseTest {
     when(gateway.save(any(Franchise.class))).thenReturn(Mono.just(new Franchise(1L, "FastFood")));
 
     StepVerifier.create(useCase.execute("FastFood"))
-      .expectNextMatches(fr -> fr.getId().getValue().equals(1L) && fr.getName().getValue().equals("FastFood"))
+      .expectNextMatches(fr -> fr.getId().equals(1L) && fr.getName().equals("FastFood"))
       .verifyComplete();
   }
 

@@ -7,7 +7,7 @@ import co.com.bancolombia.usecase.franchise.CreateFranchiseUseCase;
 import co.com.bancolombia.usecase.franchise.DeleteFranchiseUseCase;
 import co.com.bancolombia.usecase.franchise.FindAllFranchisesUseCase;
 import co.com.bancolombia.usecase.franchise.UpdateFranchiseUseCase;
-import co.com.bancolombia.model.franchise.Franchise;
+import co.com.bancolombia.usecase.franchise.dto.FranchiseDto;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
 import org.junit.jupiter.api.BeforeEach;
@@ -66,7 +66,7 @@ class RouterRestTest {
   @DisplayName("Should create franchise successfully")
   void shouldCreateFranchiseSuccessfully() {
     when(validator.validate(any(CreateFranchiseRequest.class))).thenReturn(Collections.emptySet());
-    when(createFranchiseUseCase.execute(anyString())).thenReturn(Mono.just(new Franchise(1L, "FastFood")));
+    when(createFranchiseUseCase.execute(anyString())).thenReturn(Mono.just(new FranchiseDto(1L, "FastFood")));
 
     webTestClient.post().uri("/v1/api/franchise")
       .body(BodyInserters.fromValue(new CreateFranchiseRequest("FastFood")))
@@ -81,7 +81,7 @@ class RouterRestTest {
   @Test
   @DisplayName("Should list franchises successfully")
   void shouldListFranchisesSuccessfully() {
-    when(findAllFranchisesUseCase.execute()).thenReturn(Flux.just(new Franchise(1L, "A"), new Franchise(2L, "B")));
+    when(findAllFranchisesUseCase.execute()).thenReturn(Flux.just(new FranchiseDto(1L, "A"), new FranchiseDto(2L, "B")));
 
     webTestClient.get().uri("/v1/api/franchise")
       .exchange()
@@ -98,7 +98,7 @@ class RouterRestTest {
   @DisplayName("Should update franchise successfully")
   void shouldUpdateFranchiseSuccessfully() {
     when(validator.validate(any(UpdateFranchiseRequest.class))).thenReturn(Collections.emptySet());
-    when(updateFranchiseUseCase.execute(eq(1L), anyString())).thenReturn(Mono.just(new Franchise(1L, "X")));
+    when(updateFranchiseUseCase.execute(eq(1L), anyString())).thenReturn(Mono.just(new FranchiseDto(1L, "X")));
 
     webTestClient.put().uri("/v1/api/franchise")
       .body(BodyInserters.fromValue(new UpdateFranchiseRequest(1L, "X")))
