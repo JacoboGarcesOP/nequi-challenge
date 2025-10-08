@@ -1,0 +1,44 @@
+# Version control
+.git
+.git/**
+.gitignore
+
+# IDE / editors
+.idea/
+.vscode/
+*.iml
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Gradle caches
+.gradle/
+**/.gradle/
+
+# Build outputs (root and all submodules)
+build/
+**/build/
+libs/
+**/libs/
+out/
+**/out/
+target/
+**/target/
+
+# Test results and reports
+**/test-results/
+**/reports/
+**/jacoco/
+**/jacocoHtml/
+
+# Temporary and tooling
+**/tmp/
+**/pitClasspath/
+**/pitest/
+**/.scannerwork/
+
+# Logs
+**/*.log
+
+.env

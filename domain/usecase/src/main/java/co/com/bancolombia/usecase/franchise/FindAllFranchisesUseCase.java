@@ -1,7 +1,7 @@
 package co.com.bancolombia.usecase.franchise;
 
-import co.com.bancolombia.model.franchise.Franchise;
 import co.com.bancolombia.model.franchise.gateway.FranchiseGateway;
+import co.com.bancolombia.usecase.franchise.dto.FranchiseDto;
 import reactor.core.publisher.Flux;
 
 public class FindAllFranchisesUseCase {
@@ -11,8 +11,8 @@ public class FindAllFranchisesUseCase {
     this.gateway = gateway;
   }
 
-  public Flux<Franchise> execute() {
-    return gateway.findAll();
+  public Flux<FranchiseDto> execute() {
+    return gateway.findAll().map(fr -> new FranchiseDto(fr.getId().getValue(), fr.getName().getValue()));
   }
 }
 
